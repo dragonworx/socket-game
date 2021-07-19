@@ -1,19 +1,23 @@
 {
   "name": "socket-game",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "./server/index.js",
   "license": "MIT",
   "dependencies": {
+    "chalk": "^4.1.1",
     "express": "^4.17.1",
     "socket.io": "^4.1.3",
-    "socket.io-client": "^4.1.3"
+    "socket.io-client": "^4.1.3",
+    "uuid": "^8.3.2"
   },
   "scripts": {
-    "start": "node index.js",
+    "start": "node ./server/index.js",
     "build": "webpack --config webpack.config.js",
     "build:watch": "webpack --config webpack.config.js --watch"
   },
   "devDependencies": {
+    "eslint": "^7.31.0",
+    "prettier": "^2.3.2",
     "ts-loader": "^9.2.3",
     "typescript": "^4.3.5",
     "webpack": "^5.45.1",
