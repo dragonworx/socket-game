@@ -6,7 +6,7 @@ const server = http.createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(server);
 const { v4: uuidv4 } = require('uuid');
-const { info, error } = require('./util');
+const { info, error, log } = require('./util');
 // const fs = require('fs');
 const { Game } = require('./dist/index');
 
@@ -25,6 +25,7 @@ app.use(
 
 app.get('/game/:id', (req, res) => {
   const id = req.params.id;
+  log(`GET /game/${id}`);
   if (!Game.games.has(id)) {
     const errMsg = `404 (Not Found): Game with id "${id}" not found`;
     error(errMsg);
@@ -35,6 +36,7 @@ app.get('/game/:id', (req, res) => {
 
 app.get(['/create/:id', '/create'], (req, res) => {
   const id = req.params.id || uuidv4();
+  log(`GET /create/${id}`);
   try {
     new Game(id);
   } catch (e) {
@@ -43,10 +45,11 @@ app.get(['/create/:id', '/create'], (req, res) => {
     return res.status(409).send(errMsg);
   }
   info(`Game "${id}" created`);
-  res.redirect('/admin');
+  res.redirect(`/game/${id}`);
 });
 
 app.get('/admin', (req, res) => {
+  log(`GET /admin/`);
   const json = [];
   Game.games.forEach((game, id) => {
     const gameInfo = {
@@ -66,6 +69,9 @@ io.on('connection', socket => {
     console.log('TEST', data);
   });
 });
+
+// test
+new Game('foo');
 
 server.listen(port, () => {
   info(`Game server started. Sockets on *:${port}`);
