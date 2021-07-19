@@ -1,16 +1,27 @@
 body {
   margin: 0;
-  background-color: red;
+  background-color: grey;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
 }
 
-#main {
+#app {
   position: absolute;
   left: 0;
   top: 0;
   right: 0;
   bottom: 0;
+}
+
+#info {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border: 1px solid red;
+}
+
+#info .current td {
+  background-color: yellow;
 }
 
 #join {
@@ -19,4 +30,12 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#join div {
+  border: 1px solid red;
 }

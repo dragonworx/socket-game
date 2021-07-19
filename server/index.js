@@ -3,76 +3,50 @@ const app = express();
 const http = require('http');
 const path = require('path');
 const server = http.createServer(app);
-const { Server } = require('socket.io');
-const io = new Server(server);
-const { v4: uuidv4 } = require('uuid');
-const { info, error, log } = require('./util');
-// const fs = require('fs');
+// const { Server } = require('socket.io');
+// const io = new Server(server);
+const { info } = require('./util');
 const { Game } = require('./dist/index');
 
 const port = 3000;
-// const html404 = fs.readFileSync(absPath('./404.html'));
 
 const absPath = relPath => path.resolve(__dirname, relPath);
 
+new Game(server);
+
 // HTTP
-app.use('/game', express.static(absPath('../public')));
+app.use('/', express.static(absPath('../public')));
 
-app.use(
-  '/game',
-  express.static(absPath('../node_modules/socket.io/client-dist/')),
-);
+app.use('/', express.static(absPath('../node_modules/socket.io/client-dist/')));
 
-app.get('/game/:id', (req, res) => {
-  const id = req.params.id;
-  log(`GET /game/${id}`);
-  if (!Game.games.has(id)) {
-    const errMsg = `404 (Not Found): Game with id "${id}" not found`;
-    error(errMsg);
-    return res.status(404).send(errMsg);
-  }
+app.get('/', (_req, res) => {
   res.sendFile(absPath('index.html'));
 });
 
-app.get(['/create/:id', '/create'], (req, res) => {
-  const id = req.params.id || uuidv4();
-  log(`GET /create/${id}`);
-  try {
-    new Game(id);
-  } catch (e) {
-    const errMsg = `409 (Conflict): ${e.message}`;
-    error(errMsg);
-    return res.status(409).send(errMsg);
-  }
-  info(`Game "${id}" created`);
-  res.redirect(`/game/${id}`);
-});
-
 app.get('/admin', (req, res) => {
-  log(`GET /admin/`);
-  const json = [];
-  Game.games.forEach((game, id) => {
-    const gameInfo = {
-      id,
-      url: `${req.headers.host}/game/${id}`,
-      players: [],
-    };
-    json.push(gameInfo);
-  });
-  res.send('<pre>' + JSON.stringify(json, null, 4) + '</pre>');
+  res.cookie('admin', 'true').redirect('/');
 });
 
 // Sockets
-io.on('connection', socket => {
-  console.log('a user connected');
-  socket.on('test', data => {
-    console.log('TEST', data);
-  });
-});
+// io.on('connection', socket => {
+//   info(`New socket ${socket.id} connected from ${socket.handshake.address}`);
 
-// test
-new Game('foo');
+//   game.addPlayer(socket);
+//   log(`${game.players.length} player(s)`);
 
+//   socket.on('request.game.info', () => {
+//     socket.emit('response.game.info', game.getInfo());
+//   });
+
+//   socket.on('disconnect', () => {
+//     game.removePlayer(socket);
+//     info(`Socket ${socket.id} disconnected from ${socket.handshake.address}`);
+//     log(`${game.players.length} player(s)`);
+//   });
+// });
+
+// Start Server
+console.clear();
 server.listen(port, () => {
   info(`Game server started. Sockets on *:${port}`);
 });

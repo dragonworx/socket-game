@@ -1,7 +1,10 @@
-export class Player {
-  name: string;
+import { Socket } from 'socket.io';
 
-  constructor(name: string) {
-    this.name = name;
+export class Player {
+  socket: Socket;
+  name?: string;
+
+  constructor(socket: Socket) {
+    this.socket = socket;
   }
 }
