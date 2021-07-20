@@ -9,6 +9,8 @@ const defaultGameInfo: GameInfo = {
 };
 
 export class Game extends EventEmitter {
+  static instance: Game = new Game();
+
   players: Player[];
   socket: Socket;
   playerName?: string;

@@ -1,15 +1,14 @@
 import * as React from "react";
-import { Game } from "./game";
 import { Info } from "./info";
 import { Join } from "./join";
-
-const game = new Game();
+import { GameView } from "./gameView";
 
 export function App() {
   return (
     <div id="main">
-      <Info game={game} />
-      <Join game={game} />
+      <GameView />
+      <Info />
+      <Join />
     </div>
   );
 }

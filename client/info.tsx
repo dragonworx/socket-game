@@ -2,15 +2,43 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import { Game } from "./game";
 import { getIsAdmin } from "./util";
+import { GameStatus, PlayerInfo } from "../common";
 
-interface InfoProps {
-  game: Game;
-}
+const game = Game.instance;
 
 const isAdmin = getIsAdmin();
 
-export function Info(props: InfoProps) {
-  const { game } = props;
+function getStatusText(status: GameStatus) {
+  switch (status) {
+    case "unconnected":
+      return "Unconnected";
+    case "waiting":
+      return "Waiting for players";
+    case "active":
+      return "Game in progres";
+    case "over":
+      return "Game over";
+  }
+}
+
+function getPlayerInfoName(player: PlayerInfo) {
+  if (player.name) {
+    return (
+      <span>
+        <div className="playerStatusDot active"></div>
+        {player.name}
+      </span>
+    );
+  }
+  return (
+    <span>
+      <div className="playerStatusDot"></div>
+      {`${player.id}@${player.ip}`}
+    </span>
+  );
+}
+
+export function Info() {
   const [gameInfo, setGameInfo] = useState(game.info);
 
   const onRemovePlayer = (id: string) => () => {
@@ -23,33 +51,44 @@ export function Info(props: InfoProps) {
     });
   }, []);
 
-  const players = gameInfo.players.map((player, i) => (
-    <tr
-      key={`info-player-${i}`}
-      className={game.socket.id === player.id ? "current" : ""}
-    >
-      <td>{player.name || "?"}</td>
-      <td>{player.id}</td>
-      <td>{player.ip}</td>
-      {isAdmin && player.id !== game.socket.id ? (
-        <td>
-          <button onClick={onRemovePlayer(player.id)}>-</button>
-        </td>
-      ) : (
-        <td>&nbsp;</td>
-      )}
-    </tr>
-  ));
+  const players = gameInfo.players.map((player, i) => {
+    const isPlayerJoined = !!player.name;
+    if (!isPlayerJoined && !isAdmin) {
+      return null;
+    }
+    return (
+      <tr
+        key={`info-player-${i}`}
+        className={game.socket.id === player.id ? "current" : ""}
+      >
+        <td>{getPlayerInfoName(player)}</td>
+        {isAdmin && player.id !== game.socket.id ? (
+          <td>
+            <button onClick={onRemovePlayer(player.id)}>-</button>
+          </td>
+        ) : (
+          <td>&nbsp;</td>
+        )}
+      </tr>
+    );
+  });
+
+  const onStartGameClick = () => {};
 
   return (
     <div id="info">
-      <p>{gameInfo.status}</p>
+      <div id="status">
+        <span>{getStatusText(gameInfo.status)}&#8230;</span>
+        {isAdmin ? (
+          <button id="start-game" onClick={onStartGameClick}>
+            Start Game
+          </button>
+        ) : null}
+      </div>
       <table>
         <thead>
           <tr>
-            <th>name</th>
-            <th>id</th>
-            <th>ip</th>
+            <th>Players</th>
             <th></th>
           </tr>
         </thead>
