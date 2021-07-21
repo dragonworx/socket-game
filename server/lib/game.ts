@@ -83,24 +83,38 @@ export class Game {
   start() {
     info('Game start');
     this.status = 'active';
+    this.init();
     this.updateClientsGameState();
   }
 
+  init() {}
+
   getGameState(): GameState {
+    const gameState = {
+      status: this.status,
+    };
     switch (this.status) {
       case 'waiting':
         return {
-          status: this.status,
+          ...gameState,
           players: this.players.map(player => ({
             name: player.name,
             id: player.socket.id,
             ip: player.socket.request.socket.remoteAddress || '?',
           })),
         };
-      default:
+      case 'active':
         return {
-          status: this.status,
+          ...gameState,
+          players: this.players.map(player => ({
+            name: player.name!,
+            id: player.socket.id,
+            x: player.x,
+            y: player.y,
+          })),
         };
+      default:
+        return gameState;
     }
   }
 }

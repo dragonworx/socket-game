@@ -49,6 +49,7 @@ export function Join() {
                 type="text"
                 onKeyUp={onKeyUp}
                 placeholder="Please enter your name"
+                autoFocus={true}
               />
             </label>
             <button onClick={onClick}>Join!</button>

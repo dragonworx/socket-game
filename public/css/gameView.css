@@ -12,8 +12,19 @@
 }
 
 #gameView {
-  width: 600px;
-  height: 500px;
+  --canvas-width: 600px;
+  --canvas-height: 500px;
+  width: var(--canvas-width);
+  height: var(--canvas-height);
   background-color: #000;
   box-shadow: 1px 3px 5px 5px rgb(0 0 0 / 30%);
+  position: relative;
+}
+
+#gameView canvas {
+  position: absolute;
+  width: var(--canvas-width);
+  height: var(--canvas-height);
+  top: 0;
+  left: 0;
 }

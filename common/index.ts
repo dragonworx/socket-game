@@ -9,6 +9,8 @@ export interface PlayerInfo {
 export interface ActivePlayer {
   name: string;
   id: string;
+  x: number;
+  y: number;
 }
 
 export interface BasicGameState {
