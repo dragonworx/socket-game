@@ -1,34 +1,36 @@
 import io, { Socket } from "socket.io-client";
 import { EventEmitter } from "eventemitter3";
-import { Player } from "./player";
-import { GameInfo } from "../common";
-
-const defaultGameInfo: GameInfo = {
-  status: "unconnected",
-  players: [],
-};
+import { GameState, isWaitingGameState, isActiveGameState } from "../common";
 
 export class Game extends EventEmitter {
   static instance: Game = new Game();
 
-  players: Player[];
   socket: Socket;
   playerName?: string;
-  info: GameInfo = defaultGameInfo;
+  state: GameState;
 
   constructor() {
     super();
-    this.players = [];
+    this.state = { status: "unconnected" };
     this.socket = io();
-    this.socket.on("server.game.info", (info) => {
-      this.info = info;
-      // check this player hasn't been removed, if so reload
-      if (!this.info.players.find((player) => player.id === this.socket.id)) {
-        window.location.reload();
+    this.initSocketHandlers();
+    this.socket.emit("client.game.state");
+  }
+
+  initSocketHandlers() {
+    this.socket.on("server.game.state", (gameState: GameState) => {
+      this.state = gameState;
+
+      if (isWaitingGameState(gameState)) {
+        if (!gameState.players.find((player) => player.id === this.socket.id)) {
+          window.location.reload();
+        }
+      } else if (isActiveGameState(gameState)) {
+        //todo...
       }
-      this.emit("game.info", info);
+
+      this.emit("game.state.changed", gameState);
     });
-    this.socket.emit("client.game.info");
   }
 
   removePlayer(id: string) {
@@ -38,5 +40,9 @@ export class Game extends EventEmitter {
   join(name: string) {
     this.playerName = name;
     this.socket.emit("client.player.setName", name);
+  }
+
+  start() {
+    this.socket.emit("client.game.start");
   }
 }

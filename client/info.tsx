@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import { Game } from "./game";
 import { getIsAdmin } from "./util";
-import { GameStatus, PlayerInfo } from "../common";
+import { GameStatus, PlayerInfo, isWaitingGameState } from "../common";
 
 const game = Game.instance;
 
@@ -38,20 +38,30 @@ function getPlayerInfoName(player: PlayerInfo) {
   );
 }
 
+function getJoinedPlayers(playerInfo: PlayerInfo[]) {
+  return playerInfo.filter((player) => !!player.name);
+}
+
 export function Info() {
-  const [gameInfo, setGameInfo] = useState(game.info);
+  const [gameState, setGameState] = useState(game.state);
+  const [playerInfo, setPlayerInfo] = useState([] as PlayerInfo[]);
+
+  const joinedPlayerCount = getJoinedPlayers(playerInfo).length;
 
   const onRemovePlayer = (id: string) => () => {
     game.removePlayer(id);
   };
 
   useEffect(() => {
-    game.on("game.info", (info) => {
-      setGameInfo(info);
+    game.on("game.state.changed", (gameState) => {
+      setGameState(gameState);
+      if (isWaitingGameState(gameState)) {
+        setPlayerInfo(gameState.players);
+      }
     });
   }, []);
 
-  const players = gameInfo.players.map((player, i) => {
+  const players = playerInfo.map((player, i) => {
     const isPlayerJoined = !!player.name;
     if (!isPlayerJoined && !isAdmin) {
       return null;
@@ -64,7 +74,10 @@ export function Info() {
         <td>{getPlayerInfoName(player)}</td>
         {isAdmin && player.id !== game.socket.id ? (
           <td>
-            <button onClick={onRemovePlayer(player.id)}>-</button>
+            <button
+              className="icon recycle"
+              onClick={onRemovePlayer(player.id)}
+            ></button>
           </td>
         ) : (
           <td>&nbsp;</td>
@@ -73,14 +86,20 @@ export function Info() {
     );
   });
 
-  const onStartGameClick = () => {};
+  const onStartGameClick = () => {
+    game.start();
+  };
 
   return (
     <div id="info">
       <div id="status">
-        <span>{getStatusText(gameInfo.status)}&#8230;</span>
+        <span>{getStatusText(gameState.status)}&#8230;</span>
         {isAdmin ? (
-          <button id="start-game" onClick={onStartGameClick}>
+          <button
+            id="start-game"
+            onClick={onStartGameClick}
+            disabled={joinedPlayerCount === 0}
+          >
             Start Game
           </button>
         ) : null}
@@ -88,7 +107,7 @@ export function Info() {
       <table>
         <thead>
           <tr>
-            <th>Players</th>
+            <th>Players ({joinedPlayerCount})</th>
             <th></th>
           </tr>
         </thead>

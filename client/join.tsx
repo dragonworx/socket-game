@@ -1,11 +1,12 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
 import { Game } from "./game";
+import { GameState } from "../common";
 
 const game = Game.instance;
 
 export function Join() {
-  const [gameInfo, setGameInfo] = useState(game.info);
+  const [gameInfo, setGameInfo] = useState(game.state);
 
   const onClick = () => {
     const input = document.getElementById("player-name") as HTMLInputElement;
@@ -13,8 +14,10 @@ export function Join() {
     if (!playerName.length) {
       const placeholder = input.placeholder;
       input.placeholder = "";
+      input.classList.add("error");
       setTimeout(() => {
         input.placeholder = placeholder;
+        input.classList.remove("error");
       }, 500);
       return;
     }
@@ -28,8 +31,8 @@ export function Join() {
   };
 
   useEffect(() => {
-    game.on("game.info", (info) => {
-      setGameInfo(info);
+    game.on("game.state.changed", (gameState: GameState) => {
+      setGameInfo(gameState);
     });
   }, []);
 

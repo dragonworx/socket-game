@@ -1,18 +1,16 @@
-const webpack = require("webpack");
 const path = require("path");
 
 console.clear();
 
 module.exports = function (env, argv) {
   const environment = env && env.production ? "production" : "development";
-  console.log("Building for " + environment.toUpperCase());
+  console.log("Building for " + environment);
   return [
     // client + lib
     {
       entry: path.resolve(__dirname, "./client/index.tsx"),
       mode: environment,
-      devtool: false,
-      plugins: [new webpack.SourceMapDevToolPlugin({})],
+      devtool: "eval-source-map",
       module: {
         rules: [
           {
@@ -30,9 +28,6 @@ module.exports = function (env, argv) {
         path: path.resolve(__dirname, "public"),
         libraryTarget: "umd",
       },
-      //   performance: {
-      //     hints: false,
-      //   },
     },
     // server lib (only)
     {
@@ -40,7 +35,6 @@ module.exports = function (env, argv) {
       mode: environment,
       target: "node",
       devtool: false,
-      plugins: [new webpack.SourceMapDevToolPlugin({})],
       module: {
         rules: [
           {

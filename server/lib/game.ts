@@ -1,20 +1,7 @@
-// import { Socket } from 'socket.io-client';
 import { Server, Socket } from 'socket.io';
 import { Player } from './player';
-import { info, log } from '../util';
-import { GameStatus, GameInfo } from '../../common';
-
-// type GameStatus = 'waiting' | 'active' | 'over';
-
-// interface PlayerInfo {
-//   id: string;
-//   ip: string;
-// }
-
-// interface GameInfo {
-//   status: GameStatus;
-//   players: PlayerInfo[];
-// }
+import { info, log, ws, warn } from '../util';
+import { GameStatus, GameState } from '../../common';
 
 export class Game {
   io: Server;
@@ -25,30 +12,35 @@ export class Game {
     this.io = new Server(server);
     this.status = 'waiting';
     this.players = [];
-    this.initSockets();
+    this.initSocketHandlers();
   }
 
-  initSockets() {
+  initSocketHandlers() {
     this.io.on('connection', socket => {
       this.addPlayer(socket);
 
-      socket.on('client.game.info', () => {
-        log(`client[${socket.id}].game.info`);
-        socket.emit('server.game.info', this.getInfo());
+      socket.on('client.game.state', () => {
+        ws(`client[${socket.id}].game.state`);
+        socket.emit('server.game.state', this.getGameState());
       });
 
       socket.on('client.player.remove', id => {
-        log(`client[${socket.id}].player.remove`);
+        ws(`client[${socket.id}].player.remove`);
         this.removePlayer(id);
       });
 
       socket.on('client.player.setName', name => {
-        log(`client[${socket.id}].player.setName: "${name}"`);
+        ws(`client[${socket.id}].player.setName: "${name}"`);
         this.setPlayerName(socket.id, name);
       });
 
+      socket.on('client.game.start', () => {
+        ws(`client[${socket.id}].game.start`);
+        this.start();
+      });
+
       socket.on('disconnect', () => {
-        info(
+        warn(
           `Socket ${socket.id} disconnected from ${socket.handshake.address}`,
         );
         this.removePlayer(socket.id);
@@ -61,38 +53,54 @@ export class Game {
     const player = new Player(socket);
     this.players.push(player);
     log(`${this.players.length} player(s)`);
-    socket.broadcast.emit('server.game.info', this.getInfo());
+    socket.broadcast.emit('server.game.state', this.getGameState());
   }
 
   removePlayer(id: string) {
     const player = this.players.find(player => player.socket.id === id);
     if (player) {
-      log(`Remove player ${player.socket.id}`);
+      info(`Remove player ${player.socket.id}`);
       const socket = player.socket;
       this.players = this.players.filter(player => player.socket !== socket);
       log(`${this.players.length} player(s)`);
-      this.io.emit('server.game.info', this.getInfo());
+      this.updateClientsGameState();
     }
   }
 
   setPlayerName(id: string, name: string) {
     const player = this.players.find(player => player.socket.id === id);
     if (player) {
-      log(`Set player name ${player.socket.id}: "${name}"`);
+      info(`Set player name ${player.socket.id}: "${name}"`);
       player.name = name;
-      this.io.emit('server.game.info', this.getInfo());
+      this.updateClientsGameState();
     }
   }
 
-  getInfo(): GameInfo {
-    // return game status, and basic player info (high level, not part of game loop)
-    return {
-      status: this.status,
-      players: this.players.map(player => ({
-        name: player.name,
-        id: player.socket.id,
-        ip: player.socket.request.socket.remoteAddress || '?',
-      })),
-    };
+  updateClientsGameState() {
+    this.io.emit('server.game.state', this.getGameState());
+  }
+
+  start() {
+    info('Game start');
+    this.status = 'active';
+    this.updateClientsGameState();
+  }
+
+  getGameState(): GameState {
+    switch (this.status) {
+      case 'waiting':
+        return {
+          status: this.status,
+          players: this.players.map(player => ({
+            name: player.name,
+            id: player.socket.id,
+            ip: player.socket.request.socket.remoteAddress || '?',
+          })),
+        };
+      default:
+        return {
+          status: this.status,
+        };
+    }
   }
 }
