@@ -6,7 +6,8 @@ const server = http.createServer(app);
 const { log } = require('./util');
 const { Game } = require('./dist/index');
 
-const port = 3000;
+const passedPort = parseInt(process.argv[2]);
+const port = isNaN(passedPort) ? 3000 : passedPort;
 
 const absPath = relPath => path.resolve(__dirname, relPath);
 
@@ -22,10 +23,10 @@ app.get('/admin', (req, res) => {
   res.cookie('admin', 'true').redirect('/');
 });
 
-console.clear();
+// console.clear();
 
 server.listen(port, () => {
   new Game(server);
 
-  log(`Game server started. Sockets on *:${port}`);
+  log(`Game server started on *:${port}`);
 });
