@@ -148,3 +148,17 @@
 .recycle {
   background: url(img/recycle.png);
 }
+
+#latency {
+  position: absolute;
+  right: 10px;
+  top: 5px;
+  font-size: 10px;
+  padding: 3px;
+  background-color: #999;
+  border-radius: 5px;
+}
+
+#latency-switch {
+  vertical-align: middle;
+}

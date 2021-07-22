@@ -39,6 +39,10 @@ export class Game {
         this.start();
       });
 
+      socket.on('client.ping', () => {
+        socket.emit('server.pong');
+      });
+
       socket.on('disconnect', () => {
         warn(
           `Socket ${socket.id} disconnected from ${socket.handshake.address}`,

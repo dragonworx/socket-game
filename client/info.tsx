@@ -42,9 +42,18 @@ function getJoinedPlayers(playerInfo: PlayerInfo[]) {
   return playerInfo.filter((player) => !!player.name);
 }
 
+let pingTime: number;
+let measureLatency = true;
+
+const ping = () => {
+  pingTime = Date.now();
+  game.socket.emit("client.ping");
+};
+
 export function Info() {
   const [gameState, setGameState] = useState(game.state);
   const [playerInfo, setPlayerInfo] = useState([] as PlayerInfo[]);
+  const [latency, setLatency] = useState(0);
 
   const joinedPlayerCount = getJoinedPlayers(playerInfo).length;
 
@@ -59,6 +68,14 @@ export function Info() {
         setPlayerInfo(gameState.players);
       }
     });
+    game.on("pong", () => {
+      const currentLatency = Math.round((Date.now() - pingTime) / 2);
+      setLatency(currentLatency);
+      if (measureLatency) {
+        ping();
+      }
+    });
+    ping();
   }, []);
 
   const players = playerInfo.map((player, i) => {
@@ -90,8 +107,27 @@ export function Info() {
     game.start();
   };
 
+  const onLatencySwitchChange = () => {
+    const checkbox = document.getElementById(
+      "latency-switch"
+    )! as HTMLInputElement;
+    measureLatency = checkbox.checked;
+    if (measureLatency) {
+      ping();
+    }
+  };
+
   return (
     <div id="info">
+      <div id="latency">
+        <input
+          type="checkbox"
+          id="latency-switch"
+          defaultChecked={true}
+          onChange={onLatencySwitchChange}
+        />
+        {latency}ms
+      </div>
       <div id="status">
         <span>{getStatusText(gameState.status)}&#8230;</span>
         {isAdmin ? (

@@ -31,6 +31,10 @@ export class Game extends EventEmitter {
 
       this.emit("game.state.changed", gameState);
     });
+
+    this.socket.on("server.pong", () => {
+      this.emit("pong");
+    });
   }
 
   removePlayer(id: string) {
