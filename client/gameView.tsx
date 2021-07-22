@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
 import { Game } from "./game";
+import { perlin_noise } from "./util";
 
 const game = Game.instance;
 
@@ -18,7 +19,7 @@ export function GameView() {
     const w = getCSSVar(element, "--canvas-width");
     const h = getCSSVar(element, "--canvas-height");
     const canvasBg = document.getElementById("canvas-bg") as HTMLCanvasElement;
-    const canvasFg = document.getElementById("canvas-bg") as HTMLCanvasElement;
+    const canvasFg = document.getElementById("canvas-fg") as HTMLCanvasElement;
     canvasBg.width = w;
     canvasBg.height = h;
     canvasFg.width = w;
@@ -27,12 +28,11 @@ export function GameView() {
     setCanvasFg(canvasFg);
     setWidth(w);
     setHeight(h);
-
-    const ctx = canvasBg.getContext("2d")!;
-    ctx.strokeStyle = "white";
-    ctx.moveTo(10, 10);
-    ctx.lineTo(w - 10, h - 10);
-    ctx.stroke();
+    game.canvasBg = canvasBg;
+    game.canvasFg = canvasFg;
+    game.width = w;
+    game.height = h;
+    perlin_noise(canvasBg);
   }, []);
 
   return (

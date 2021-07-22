@@ -1,6 +1,8 @@
 import { Socket } from 'socket.io';
 
 export class Player {
+  static size: number = 10;
+
   socket: Socket;
   name?: string;
   x: number;

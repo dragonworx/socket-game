@@ -7,6 +7,8 @@ export class Game {
   io: Server;
   status: GameStatus;
   players: Player[];
+  width: number = 600;
+  height: number = 500;
 
   constructor(server: any) {
     this.io = new Server(server);
@@ -62,6 +64,11 @@ export class Game {
         this.reset();
       });
 
+      socket.on('client.input.keydown', code => {
+        ws(`client[${socket.id}].input.keydown: ${code}`);
+        this.onPlayerKeyDown(socket, code);
+      });
+
       socket.on('client.ping', () => {
         socket.emit('server.pong');
       });
@@ -115,13 +122,40 @@ export class Game {
   }
 
   init() {
-    //todo: setup initial game and players state
+    const playerSize = Player.size;
+    this.players.forEach(player => {
+      const x = playerSize + Math.random() * (this.width - playerSize * 2);
+      const y = playerSize + Math.random() * (this.height - playerSize * 2);
+      player.x = x;
+      player.y = y;
+    });
   }
 
   end() {
     info('Game end');
     this.status = 'over';
     this.updateClientsGameState();
+  }
+
+  onPlayerKeyDown(socket: Socket, code: string) {
+    const player = this.players.find(player => player.socket === socket);
+    if (player) {
+      switch (code) {
+        case 'ArrowLeft':
+          player.x -= Player.size;
+          break;
+        case 'ArrowRight':
+          player.x += Player.size;
+          break;
+        case 'ArrowUp':
+          player.y -= Player.size;
+          break;
+        case 'ArrowDown':
+          player.y += Player.size;
+          break;
+      }
+      this.updateClientsGameState();
+    }
   }
 
   getGameState(): GameState {

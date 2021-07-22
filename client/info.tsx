@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { Game } from "./game";
 import { getIsAdmin } from "./util";
 import { GameStatus, PlayerInfo, isWaitingGameState } from "../common";
-import { stringReplaceAll } from "../server/dist";
 
 const game = Game.instance;
 
@@ -158,11 +157,7 @@ export function Info() {
           ) : null}
         </span>
         {isAdmin ? (
-          <button
-            id="start-game"
-            onClick={onGameButtonClick}
-            disabled={joinedPlayerCount === 0}
-          >
+          <button id="start-game" onClick={onGameButtonClick}>
             {getGameButtonText(gameState.status)}
           </button>
         ) : null}
