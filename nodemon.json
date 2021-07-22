@@ -1,4 +1,4 @@
 {
-   "ignore": ["client/*", "common/*"],
+   "ignore": ["client/*", "common/*", "public/*"],
    "delay": 1000
 }

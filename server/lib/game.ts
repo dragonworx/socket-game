@@ -15,6 +15,19 @@ export class Game {
     this.initSocketHandlers();
   }
 
+  reset() {
+    this.status = 'waiting';
+    this.updateClientsGameState();
+  }
+
+  kickAllPlayers() {
+    this.players.forEach(player => {
+      player.socket.disconnect(true);
+    });
+    this.players = [];
+    this.reset();
+  }
+
   initSocketHandlers() {
     this.io.on('connection', socket => {
       this.addPlayer(socket);
@@ -37,6 +50,16 @@ export class Game {
       socket.on('client.game.start', () => {
         ws(`client[${socket.id}].game.start`);
         this.start();
+      });
+
+      socket.on('client.game.end', () => {
+        ws(`client[${socket.id}].game.end`);
+        this.end();
+      });
+
+      socket.on('client.game.reset', () => {
+        ws(`client[${socket.id}].game.reset`);
+        this.reset();
       });
 
       socket.on('client.ping', () => {
@@ -91,7 +114,15 @@ export class Game {
     this.updateClientsGameState();
   }
 
-  init() {}
+  init() {
+    //todo: setup initial game and players state
+  }
+
+  end() {
+    info('Game end');
+    this.status = 'over';
+    this.updateClientsGameState();
+  }
 
   getGameState(): GameState {
     const gameState = {

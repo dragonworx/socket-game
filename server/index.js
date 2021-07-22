@@ -11,6 +11,8 @@ const port = isNaN(passedPort) ? 3000 : passedPort;
 
 const absPath = relPath => path.resolve(__dirname, relPath);
 
+const game = new Game(server);
+
 app.use('/', express.static(absPath('../public')));
 
 app.use('/', express.static(absPath('../node_modules/socket.io/client-dist/')));
@@ -20,13 +22,12 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/admin', (req, res) => {
+  game.reset();
   res.cookie('admin', 'true').redirect('/');
 });
 
-// console.clear();
+console.clear();
 
 server.listen(port, () => {
-  new Game(server);
-
   log(`Game server started on *:${port}`);
 });

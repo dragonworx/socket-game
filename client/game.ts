@@ -35,9 +35,19 @@ export class Game extends EventEmitter {
     this.socket.on("server.pong", () => {
       this.emit("pong");
     });
+
+    this.socket.on("disconnect", () => {
+      this.state = {
+        status: "unconnected",
+      };
+      this.emit("game.state.changed", this.state);
+    });
   }
 
   removePlayer(id: string) {
+    if (id === this.socket.id) {
+      return window.location.reload();
+    }
     this.socket.emit("client.player.remove", id);
   }
 
@@ -48,5 +58,13 @@ export class Game extends EventEmitter {
 
   start() {
     this.socket.emit("client.game.start");
+  }
+
+  end() {
+    this.socket.emit("client.game.end");
+  }
+
+  reset() {
+    this.socket.emit("client.game.reset");
   }
 }

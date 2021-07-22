@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Game } from "./game";
 import { getIsAdmin } from "./util";
 import { GameStatus, PlayerInfo, isWaitingGameState } from "../common";
+import { stringReplaceAll } from "../server/dist";
 
 const game = Game.instance;
 
@@ -40,6 +41,17 @@ function getPlayerInfoName(player: PlayerInfo) {
 
 function getJoinedPlayers(playerInfo: PlayerInfo[]) {
   return playerInfo.filter((player) => !!player.name);
+}
+
+function getGameButtonText(status: GameStatus) {
+  switch (status) {
+    case "waiting":
+      return "Start Game";
+    case "active":
+      return "End Game";
+    case "over":
+      return "Reset";
+  }
 }
 
 let pingTime: number;
@@ -103,8 +115,15 @@ export function Info() {
     );
   });
 
-  const onStartGameClick = () => {
-    game.start();
+  const onGameButtonClick = () => {
+    switch (gameState.status) {
+      case "waiting":
+        return game.start();
+      case "active":
+        return game.end();
+      case "over":
+        return game.reset();
+    }
   };
 
   const onLatencySwitchChange = () => {
@@ -129,14 +148,22 @@ export function Info() {
         {latency}ms
       </div>
       <div id="status">
-        <span>{getStatusText(gameState.status)}&#8230;</span>
+        <span>
+          {getStatusText(gameState.status)}&#8230;
+          {gameState.status === "unconnected" ? (
+            <button
+              className="icon recycle"
+              onClick={onRemovePlayer(game.socket.id)}
+            ></button>
+          ) : null}
+        </span>
         {isAdmin ? (
           <button
             id="start-game"
-            onClick={onStartGameClick}
+            onClick={onGameButtonClick}
             disabled={joinedPlayerCount === 0}
           >
-            Start Game
+            {getGameButtonText(gameState.status)}
           </button>
         ) : null}
       </div>
