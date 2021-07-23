@@ -65,7 +65,7 @@ export class Game {
       });
 
       socket.on('client.input.keydown', code => {
-        ws(`client[${socket.id}].input.keydown: ${code}`);
+        // ws(`client[${socket.id}].input.keydown: ${code}`);
         this.onPlayerKeyDown(socket, code);
       });
 

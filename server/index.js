@@ -22,8 +22,15 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/admin', (req, res) => {
+  const pw = req.query['pw'];
+  console.log(pw);
+  if (process.env['ADMIN_PW'] && pw !== process.env['ADMIN_PW']) {
+    return res.status(401).send('Incorrect admin password');
+  }
   game.reset();
-  res.cookie('admin', 'true').redirect('/');
+  res
+    .cookie('admin-358b2120-3ee5-4379-b05b-7c6b59097626', 'true')
+    .redirect('/');
 });
 
 console.clear();

@@ -2,6 +2,7 @@ import io, { Socket } from "socket.io-client";
 import { EventEmitter } from "eventemitter3";
 import { GameState, isWaitingGameState, isActiveGameState } from "../common";
 import { InputManager, KeyEvent } from "./inputManager";
+import { throttled } from "./util";
 
 export class Game extends EventEmitter {
   static instance: Game = new Game();
@@ -28,7 +29,7 @@ export class Game extends EventEmitter {
       "ArrowUp",
       "ArrowDown",
     ]);
-    this.inputManager.on("keydown", this.onKeyDown);
+    this.inputManager.on("keypress", throttled(this.onKeyDown, 1000 / 60));
     this.width = 0;
     this.height = 0;
   }

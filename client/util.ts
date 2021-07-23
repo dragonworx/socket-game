@@ -1,11 +1,25 @@
 export function getIsAdmin() {
   const adminCookie = document.cookie
     .split("; ")
-    .find((row) => row.startsWith("admin="));
+    .find((row) =>
+      row.startsWith("admin-358b2120-3ee5-4379-b05b-7c6b59097626=")
+    );
   if (adminCookie) {
     return adminCookie.split("=")[1] === "true";
   }
   return false;
+}
+
+export function throttled(fn: Function, delay: number) {
+  let lastCall = 0;
+  return function (...args: any[]) {
+    const now = new Date().getTime();
+    if (now - lastCall < delay) {
+      return;
+    }
+    lastCall = now;
+    return fn(...args);
+  };
 }
 
 export function randomNoise(
