@@ -121,15 +121,7 @@ export class Game {
     this.updateClientsGameState();
   }
 
-  init() {
-    const playerSize = Player.size;
-    this.players.forEach(player => {
-      const x = playerSize + Math.random() * (this.width - playerSize * 2);
-      const y = playerSize + Math.random() * (this.height - playerSize * 2);
-      player.x = x;
-      player.y = y;
-    });
-  }
+  init() {}
 
   end() {
     info('Game end');
@@ -142,16 +134,12 @@ export class Game {
     if (player) {
       switch (code) {
         case 'ArrowLeft':
-          player.x -= Player.size;
           break;
         case 'ArrowRight':
-          player.x += Player.size;
           break;
         case 'ArrowUp':
-          player.y -= Player.size;
           break;
         case 'ArrowDown':
-          player.y += Player.size;
           break;
       }
       this.updateClientsGameState();
@@ -178,8 +166,6 @@ export class Game {
           players: this.players.map(player => ({
             name: player.name!,
             id: player.socket.id,
-            x: player.x,
-            y: player.y,
           })),
         };
       default:

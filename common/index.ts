@@ -1,6 +1,6 @@
 export type GameStatus = "unconnected" | "waiting" | "active" | "over";
 
-export interface PlayerInfo {
+export interface ConnectingPlayer {
   name?: string;
   id: string;
   ip: string;
@@ -9,8 +9,6 @@ export interface PlayerInfo {
 export interface ActivePlayer {
   name: string;
   id: string;
-  x: number;
-  y: number;
 }
 
 export interface BasicGameState {
@@ -18,7 +16,7 @@ export interface BasicGameState {
 }
 
 export interface WaitingGameState extends BasicGameState {
-  players: PlayerInfo[];
+  players: ConnectingPlayer[];
 }
 
 export interface ActiveGameState extends BasicGameState {

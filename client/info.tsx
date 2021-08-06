@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import { Game } from "./game";
 import { getIsAdmin } from "./util";
-import { GameStatus, PlayerInfo, isWaitingGameState } from "../common";
+import { GameStatus, ConnectingPlayer, isWaitingGameState } from "../common";
 
 const game = Game.instance;
 
@@ -21,7 +21,7 @@ function getStatusText(status: GameStatus) {
   }
 }
 
-function getPlayerInfoName(player: PlayerInfo) {
+function getPlayerInfoName(player: ConnectingPlayer) {
   if (player.name) {
     return (
       <span>
@@ -38,7 +38,7 @@ function getPlayerInfoName(player: PlayerInfo) {
   );
 }
 
-function getJoinedPlayers(playerInfo: PlayerInfo[]) {
+function getJoinedPlayers(playerInfo: ConnectingPlayer[]) {
   return playerInfo.filter((player) => !!player.name);
 }
 
@@ -63,7 +63,7 @@ const ping = () => {
 
 export function Info() {
   const [gameState, setGameState] = useState(game.state);
-  const [playerInfo, setPlayerInfo] = useState([] as PlayerInfo[]);
+  const [playerInfo, setPlayerInfo] = useState([] as ConnectingPlayer[]);
   const [latency, setLatency] = useState(0);
 
   const joinedPlayerCount = getJoinedPlayers(playerInfo).length;

@@ -1,66 +1,53 @@
-import { EventEmitter } from "eventemitter3";
+import {
+  InputChannel,
+  KeyboardInputChannel,
+  InputChannelType,
+} from './inputChannel';
 
-export interface KeyEvent {
-  key: string;
-  code: string;
-}
+export class InputManager {
+  channels: InputChannel<InputChannelType>[] = [];
 
-export class InputManager extends EventEmitter {
-  keysDown: Map<string, KeyEvent>;
-  accept: string[];
-
-  constructor(accept?: string[]) {
-    super();
-    this.keysDown = new Map();
-    this.accept = accept || [];
-    document.addEventListener("keydown", this.onKeyDown);
-    document.addEventListener("keyup", this.onKeyUp);
-    requestAnimationFrame(this.updateFrame);
+  constructor() {
+    document.addEventListener('keydown', this.onKeyDown);
+    document.addEventListener('keyup', this.onKeyUp);
+    requestAnimationFrame(this.update);
   }
 
-  accepts(code: string) {
-    if (this.accept.length) {
-      for (let i = 0; i < this.accept.length; i++) {
-        if (this.accept[i] === code) {
-          return true;
-        }
-      }
-      return false;
-    }
-    return true;
+  createKeyboardChannel(
+    mapping: Map<string, string>,
+    bufferSize?: number,
+    bufferClearTimeoutMs?: number
+  ) {
+    const channel = new KeyboardInputChannel(
+      mapping,
+      bufferSize,
+      bufferClearTimeoutMs
+    );
+    this.channels.push(channel);
+    return channel;
+  }
+
+  getChannelsForKeyboardInput(e: KeyboardEvent) {
+    return this.channels.filter(
+      (channel) =>
+        channel instanceof KeyboardInputChannel && channel.allowInput(e.code)
+    ) as KeyboardInputChannel[];
   }
 
   onKeyDown = (e: KeyboardEvent) => {
-    if (!this.accepts(e.code)) {
-      return;
-    }
-    const keyEvent = {
-      key: e.key,
-      code: e.code,
-    };
-    this.keysDown.set(e.code, keyEvent);
-    this.emit("keydown", keyEvent);
+    this.getChannelsForKeyboardInput(e).forEach((channel) =>
+      channel.onKeyDown(e)
+    );
   };
 
   onKeyUp = (e: KeyboardEvent) => {
-    if (!this.accepts(e.code)) {
-      return;
-    }
-    this.keysDown.delete(e.code);
-    this.emit("keyup", {
-      key: e.key,
-      code: e.code,
-    });
+    this.getChannelsForKeyboardInput(e).forEach((channel) =>
+      channel.onKeyUp(e)
+    );
   };
 
-  updateFrame = () => {
-    this.keysDown.forEach((keyEvent) => {
-      this.emit("keypress", keyEvent);
-    });
-    requestAnimationFrame(this.updateFrame);
+  update = () => {
+    this.channels.forEach((channel) => channel.update());
+    requestAnimationFrame(this.update);
   };
-
-  isDown(code: string) {
-    return this.keysDown.has(code);
-  }
 }
