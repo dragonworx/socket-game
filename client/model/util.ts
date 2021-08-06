@@ -10,7 +10,7 @@ export function createElement<T extends HTMLElement>(
 ): T {
   const element = document.createElement(nodeType) as T;
   if (id) {
-    element.setAttribute('id', id);
+    element.setAttribute("id", id);
   }
   if (cssClasses) {
     element.classList.add(...cssClasses);
@@ -35,6 +35,18 @@ export function randomRgb() {
 
 export function rgb(color: Color) {
   return `rgb(${color[0]},${color[1]},${color[2]})`;
+}
+
+export function getIsAdmin() {
+  const adminCookie = document.cookie
+    .split("; ")
+    .find((row) =>
+      row.startsWith("admin-358b2120-3ee5-4379-b05b-7c6b59097626=")
+    );
+  if (adminCookie) {
+    return adminCookie.split("=")[1] === "true";
+  }
+  return false;
 }
 
 export function throttled(fn: Function, delay: number) {
@@ -62,7 +74,7 @@ export function randomNoise(
   width = width || canvas.width;
   height = height || canvas.height;
   alpha = alpha || 255;
-  var g = canvas.getContext('2d')!,
+  var g = canvas.getContext("2d")!,
     imageData = g.getImageData(x, y, width, height),
     random = Math.random,
     pixels = imageData.data,
@@ -77,9 +89,9 @@ export function randomNoise(
 }
 
 export function perlin_noise(canvas: HTMLCanvasElement) {
-  var canvas_ctx = canvas.getContext('2d')!,
-    offscreen = document.createElement('canvas'),
-    offscreen_ctx = offscreen.getContext('2d')!,
+  var canvas_ctx = canvas.getContext("2d")!,
+    offscreen = document.createElement("canvas"),
+    offscreen_ctx = offscreen.getContext("2d")!,
     saved_alpha = canvas_ctx.globalAlpha;
 
   /* Fill the offscreen buffer with random noise. */

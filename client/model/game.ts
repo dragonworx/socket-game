@@ -1,15 +1,21 @@
-import { InputManager } from '../inputManager';
-import { Animator } from './animator';
-import { Player } from './player';
-import { createElement } from './util';
-import { Graphics } from './graphics';
-import { Grid, Direction, Buffers as GridBuffer } from './grid';
+import io, { Socket } from "socket.io-client";
+import { EventEmitter } from "eventemitter3";
+import { InputManager } from "../inputManager";
+import { Animator } from "./animator";
+import { Player } from "./player";
+import { createElement } from "./util";
+import { Graphics } from "./graphics";
+import { Grid, Direction, Buffers as GridBuffer } from "./grid";
+import { GameState, isWaitingGameState, isActiveGameState } from "../../common";
 
 export const GridSize = 10;
 
-export class Game {
+export class Game extends EventEmitter {
   static instance: Game = new Game();
 
+  socket: Socket;
+  state: GameState;
+  playerName?: string;
   players: Player[] = [];
   inputManager: InputManager;
   animator: Animator;
@@ -18,22 +24,51 @@ export class Game {
   grid: Grid;
 
   constructor() {
+    super();
+    this.socket = io();
+    this.state = { status: "unconnected" };
     this.animator = new Animator(15);
-    this.animator.on('frame', this.onFrame);
+    this.animator.on("frame", this.onFrame);
     this.inputManager = new InputManager();
     this.inputManager
       .createKeyboardChannel(
         new Map(
           Object.entries({
-            Space: 'Space',
-            Enter: 'Enter',
+            Space: "Space",
+            Enter: "Enter",
           })
         )
       )
-      .on('keydown', this.onGeneralKeyInput);
-    this.spritesContainer = createElement('div', 'sprites');
+      .on("keydown", this.onGeneralKeyInput);
+    this.spritesContainer = createElement("div", "sprites");
     this.graphics = new Graphics();
     this.grid = new Grid(GridSize, GridSize, this.spritesContainer);
+    this.initSocketHandlers();
+  }
+
+  initSocketHandlers() {
+    this.socket.on("server.game.state", (gameState: GameState) => {
+      this.state = gameState;
+
+      if (isWaitingGameState(gameState)) {
+        if (!gameState.players.find((player) => player.id === this.socket.id)) {
+          window.location.reload();
+        }
+      }
+
+      this.emit("game.state.changed", gameState);
+    });
+
+    this.socket.on("server.pong", () => {
+      this.emit("pong");
+    });
+
+    this.socket.on("disconnect", () => {
+      this.state = {
+        status: "unconnected",
+      };
+      this.emit("game.state.changed", this.state);
+    });
   }
 
   newKeyboardPlayer(mapping: Map<string, string>) {
@@ -52,6 +87,7 @@ export class Game {
     gameView.appendChild(spritesContainer);
     this.reset();
     this.animator.start();
+    this.socket.emit("client.game.state");
   }
 
   setSpritesContainer(element: HTMLDivElement) {
@@ -70,7 +106,7 @@ export class Game {
       this.players[0],
       Math.floor(GridSize / 2),
       0,
-      'left',
+      "left",
       1
     );
     if (this.players.length === 2) {
@@ -78,7 +114,7 @@ export class Game {
         this.players[1],
         0,
         Math.floor(GridSize / 2),
-        'bottom',
+        "bottom",
         1
       );
     }
@@ -113,10 +149,10 @@ export class Game {
 
   onGeneralKeyInput = (code: string) => {
     switch (code) {
-      case 'Space':
+      case "Space":
         this.animator.toggleRunning();
         break;
-      case 'Enter':
+      case "Enter":
         this.step();
     }
   };

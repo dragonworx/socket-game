@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
 import { Game } from "./game";
-import { getIsAdmin } from "./util";
+import { getIsAdmin } from "./model/util";
 import { GameStatus, ConnectingPlayer, isWaitingGameState } from "../common";
 
 const game = Game.instance;

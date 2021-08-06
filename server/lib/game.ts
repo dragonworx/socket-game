@@ -65,8 +65,11 @@ export class Game {
       });
 
       socket.on('client.input.keydown', code => {
-        // ws(`client[${socket.id}].input.keydown: ${code}`);
-        this.onPlayerKeyDown(socket, code);
+        socket.emit('server.input.keydown', code);
+      });
+
+      socket.on('client.input.keyup', code => {
+        socket.emit('server.input.keyup', code);
       });
 
       socket.on('client.ping', () => {
@@ -127,23 +130,6 @@ export class Game {
     info('Game end');
     this.status = 'over';
     this.updateClientsGameState();
-  }
-
-  onPlayerKeyDown(socket: Socket, code: string) {
-    const player = this.players.find(player => player.socket === socket);
-    if (player) {
-      switch (code) {
-        case 'ArrowLeft':
-          break;
-        case 'ArrowRight':
-          break;
-        case 'ArrowUp':
-          break;
-        case 'ArrowDown':
-          break;
-      }
-      this.updateClientsGameState();
-    }
   }
 
   getGameState(): GameState {
