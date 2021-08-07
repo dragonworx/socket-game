@@ -1,13 +1,16 @@
-import { EventEmitter } from 'eventemitter3';
-import { InputChannel, InputChannelType } from '../inputChannel';
-import { CutLine } from './cutLine';
-import { Edge, Direction, Buffers as GridBuffers, Vertex } from './grid';
-import { createElement, randomColor, rgb, Color } from './util';
+import { EventEmitter } from "eventemitter3";
+import { InputChannel, InputChannelType } from "../inputChannel";
+import { CutLine } from "./cutLine";
+import { Edge, Direction, Buffers as GridBuffers, Vertex } from "./grid";
+import { createElement, randomColor, rgb, Color } from "./util";
+import { Game } from "./game";
+import { isActiveGameState, PlayerInfo } from "../../common";
 
 export const PlayerInitialSpeed = 7;
-export const PlayerCrashDamage = 5;
+export const PlayerCrashDamage = 15;
 
 export class Player extends EventEmitter {
+  info: PlayerInfo;
   edge: Edge = {} as Edge;
   direction: Direction = 1;
   offset: number = 0;
@@ -21,12 +24,42 @@ export class Player extends EventEmitter {
 
   constructor(inputChannel: InputChannel<InputChannelType>) {
     super();
-    this.sprite = createElement('div', undefined, ['sprite', 'player']);
+    this.info = {
+      id: "",
+      name: "",
+      ip: "",
+      health: 100,
+      score: 0,
+      isAlive: true,
+    };
+    this.sprite = createElement("div", undefined, ["sprite", "player"]);
+    const nameTag = createElement("div", undefined, ["nametag"]);
+    this.sprite.appendChild(nameTag);
     this.inputChannel = inputChannel;
-    this.inputChannel.on('keydown', this.onKeyDown);
+    this.inputChannel.on("keydown", this.onKeyDown).on("keyup", this.onKeyUp);
   }
 
-  onKeyDown = (code: string) => {};
+  setName(name: string) {
+    this.info.name = name;
+    this.sprite.querySelector(".nametag")!.innerHTML = name;
+  }
+
+  setIsDead() {
+    this.sprite.classList.add("dead");
+    this.info.isAlive = false;
+  }
+
+  onKeyDown = (code: string) => {
+    if (isActiveGameState(Game.instance.state)) {
+      Game.instance.socket.emit("client.input.keydown", code);
+    }
+  };
+
+  onKeyUp = (code: string) => {
+    if (isActiveGameState(Game.instance.state)) {
+      Game.instance.socket.emit("client.input.keyup", code);
+    }
+  };
 
   setSpriteToCurrentPosition() {
     const [x, y] = this.edge.getPosition(this.direction, this.offset);
@@ -58,25 +91,25 @@ export class Player extends EventEmitter {
         if (isVertical) {
           if (direction === -1) {
             this.turnIfCase([
-              { keyCode: 'left', edge: edge.from.prev },
-              { keyCode: 'right', edge: edge.from.next, direction: 1 },
+              { keyCode: "left", edge: edge.from.prev },
+              { keyCode: "right", edge: edge.from.next, direction: 1 },
             ]);
           } else if (direction === 1) {
             this.turnIfCase([
-              { keyCode: 'left', edge: edge.to.prev, direction: -1 },
-              { keyCode: 'right', edge: edge.to.next },
+              { keyCode: "left", edge: edge.to.prev, direction: -1 },
+              { keyCode: "right", edge: edge.to.next },
             ]);
           }
         } else if (isHorizontal) {
           if (direction === -1) {
             this.turnIfCase([
-              { keyCode: 'up', edge: edge.from.above },
-              { keyCode: 'down', edge: edge.from.below, direction: 1 },
+              { keyCode: "up", edge: edge.from.above },
+              { keyCode: "down", edge: edge.from.below, direction: 1 },
             ]);
           } else if (direction === 1) {
             this.turnIfCase([
-              { keyCode: 'up', edge: edge.to.above, direction: -1 },
-              { keyCode: 'down', edge: edge.to.below },
+              { keyCode: "up", edge: edge.to.above, direction: -1 },
+              { keyCode: "down", edge: edge.to.below },
             ]);
           }
         }
@@ -130,8 +163,8 @@ export class Player extends EventEmitter {
       const prevCell = edge.getPrevCell();
       if (prevCell) {
         if (prevCell.isEmpty && cell.isEmpty) {
-          buffer.fillBounds(cell.bounds, 'red');
-          buffer.fillBounds(prevCell.bounds, 'red');
+          buffer.fillBounds(cell.bounds, "red");
+          buffer.fillBounds(prevCell.bounds, "red");
           this.takeDamage(PlayerCrashDamage);
         }
       }
@@ -139,8 +172,8 @@ export class Player extends EventEmitter {
       const aboveCell = edge.getAboveCell();
       if (aboveCell) {
         if (aboveCell.isEmpty && cell.isEmpty) {
-          buffer.fillBounds(cell.bounds, 'red');
-          buffer.fillBounds(aboveCell.bounds, 'red');
+          buffer.fillBounds(cell.bounds, "red");
+          buffer.fillBounds(aboveCell.bounds, "red");
           this.takeDamage(PlayerCrashDamage);
         }
       }
@@ -149,13 +182,25 @@ export class Player extends EventEmitter {
 
   takeDamage(damage: number) {
     this.health = Math.max(0, this.health - damage);
-    if (this.health === 0) {
-      console.log('DEAD!');
+    if (Game.instance.userPlayer === this) {
+      Game.instance.socket.emit("client.player.damage", this.health);
+      if (this.health === 0) {
+        console.log("DEAD!");
+        Game.instance.socket.emit("client.player.dead");
+      }
     }
   }
 
   addScore(points: number) {
     this.score += points;
+    this.edge.grid.totalCells -= points;
+    if (Game.instance.userPlayer === this) {
+      Game.instance.socket.emit(
+        "client.player.score",
+        this.score,
+        this.edge.grid.totalCells
+      );
+    }
   }
 
   setEdge(edge: Edge, direction?: Direction) {
@@ -206,7 +251,9 @@ export class Player extends EventEmitter {
       cutLine
     );
     const emptyCells = grid.cutCells(cutLine);
-    this.addScore(emptyCells.size);
+    if (emptyCells.size > 0) {
+      this.addScore(emptyCells.size);
+    }
     const gridBuffer = grid.graphics.getBuffer(GridBuffers.Grid);
     setTimeout(() => {
       buffer.batchImageDataOps(() => cutLine.render(buffer, [0, 0, 0, 0]));

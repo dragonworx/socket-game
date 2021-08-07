@@ -1,14 +1,16 @@
 export type GameStatus = "unconnected" | "waiting" | "active" | "over";
-
-export interface ConnectingPlayer {
-  name?: string;
+export interface RemoteInput {
   id: string;
-  ip: string;
+  code: string;
 }
 
-export interface ActivePlayer {
-  name: string;
+export interface PlayerInfo {
   id: string;
+  name: string;
+  ip: string;
+  health: number;
+  score: number;
+  isAlive: boolean;
 }
 
 export interface BasicGameState {
@@ -16,11 +18,11 @@ export interface BasicGameState {
 }
 
 export interface WaitingGameState extends BasicGameState {
-  players: ConnectingPlayer[];
+  players: PlayerInfo[];
 }
 
 export interface ActiveGameState extends BasicGameState {
-  players: ActivePlayer[];
+  players: PlayerInfo[];
 }
 
 export type GameState = BasicGameState | WaitingGameState | ActiveGameState;

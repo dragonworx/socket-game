@@ -1,5 +1,5 @@
-import { EventEmitter } from 'eventemitter3';
-import { interval, Timer } from 'd3-timer';
+import { EventEmitter } from "eventemitter3";
+import { interval, Timer } from "d3-timer";
 
 export class Animator extends EventEmitter {
   isRunning: boolean = false;
@@ -37,11 +37,11 @@ export class Animator extends EventEmitter {
   onFrame = (elapsed: number) => {
     if (this.isRunning) {
       if (this.lastTime > -1) {
-        this.emit('frame', this.fps, elapsed);
+        this.emit("frame", this.fps, elapsed);
       } else {
         const delta = elapsed - this.lastTime;
         const fps = 1000 / delta;
-        this.emit('frame', fps, elapsed);
+        this.emit("frame", fps, elapsed);
       }
     }
     this.lastTime = elapsed;

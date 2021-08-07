@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Game } from "./game";
+import { Game } from "./model/game";
 import { GameState } from "../common";
 
 const game = Game.instance;
@@ -36,7 +36,7 @@ export function Join() {
     });
   }, []);
 
-  if (gameInfo.status === "waiting" && !game.playerName) {
+  if (gameInfo.status === "waiting" && !game.userPlayer) {
     return (
       <div id="join-overlay">
         <div id="join">

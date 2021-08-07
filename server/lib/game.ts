@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { Player } from './player';
 import { info, log, ws, warn } from '../util';
-import { GameStatus, GameState } from '../../common';
+import { GameStatus, GameState, PlayerInfo } from '../../common';
 
 export class Game {
   io: Server;
@@ -19,6 +19,11 @@ export class Game {
 
   reset() {
     this.status = 'waiting';
+    this.players.forEach(player => {
+      player.info.isAlive = true;
+      player.info.health = 100;
+      player.info.score = 0;
+    });
     this.updateClientsGameState();
   }
 
@@ -34,54 +39,63 @@ export class Game {
     this.io.on('connection', socket => {
       this.addPlayer(socket);
 
-      socket.on('client.game.state', () => {
-        ws(`client[${socket.id}].game.state`);
-        socket.emit('server.game.state', this.getGameState());
-      });
-
-      socket.on('client.player.remove', id => {
-        ws(`client[${socket.id}].player.remove`);
-        this.removePlayer(id);
-      });
-
-      socket.on('client.player.setName', name => {
-        ws(`client[${socket.id}].player.setName: "${name}"`);
-        this.setPlayerName(socket.id, name);
-      });
-
-      socket.on('client.game.start', () => {
-        ws(`client[${socket.id}].game.start`);
-        this.start();
-      });
-
-      socket.on('client.game.end', () => {
-        ws(`client[${socket.id}].game.end`);
-        this.end();
-      });
-
-      socket.on('client.game.reset', () => {
-        ws(`client[${socket.id}].game.reset`);
-        this.reset();
-      });
-
-      socket.on('client.input.keydown', code => {
-        socket.emit('server.input.keydown', code);
-      });
-
-      socket.on('client.input.keyup', code => {
-        socket.emit('server.input.keyup', code);
-      });
-
-      socket.on('client.ping', () => {
-        socket.emit('server.pong');
-      });
-
-      socket.on('disconnect', () => {
-        warn(
-          `Socket ${socket.id} disconnected from ${socket.handshake.address}`,
-        );
-        this.removePlayer(socket.id);
-      });
+      socket
+        .on('client.game.state', () => {
+          ws(`client[${socket.id}].game.state`);
+          socket.emit('server.game.state', this.getGameState());
+        })
+        .on('client.player.remove', id => {
+          ws(`client[${socket.id}].player.remove`);
+          this.removePlayer(id);
+        })
+        .on('client.player.join', name => {
+          ws(`client[${socket.id}].player.setName: "${name}"`);
+          this.playerJoined(socket.id, name);
+        })
+        .on('client.game.start', () => {
+          ws(`client[${socket.id}].game.start`);
+          this.start();
+        })
+        .on('client.game.end', () => {
+          ws(`client[${socket.id}].game.end`);
+          this.end();
+        })
+        .on('client.game.reset', () => {
+          ws(`client[${socket.id}].game.reset`);
+          this.reset();
+        })
+        .on('client.input.keydown', code => {
+          // ws(`client[${socket.id}].input.keydown: ${code}`);
+          socket.broadcast.emit('server.input.keydown', {
+            id: socket.id,
+            code,
+          });
+        })
+        .on('client.input.keyup', code => {
+          // ws(`client[${socket.id}].input.keyup: ${code}`);
+          socket.broadcast.emit('server.input.keyup', { id: socket.id, code });
+        })
+        .on('client.player.damage', health => {
+          ws(`client[${socket.id}].player.damage: ${health}`);
+          this.playerDamaged(socket.id, health);
+        })
+        .on('client.player.score', (score: number, totalCells: number) => {
+          ws(`client[${socket.id}].player.score: ${score}`);
+          this.playerScore(socket.id, score, totalCells);
+        })
+        .on('client.player.dead', score => {
+          ws(`client[${socket.id}].player.dead`);
+          this.playerDead(socket.id);
+        })
+        .on('client.ping', () => {
+          socket.emit('server.pong');
+        })
+        .on('disconnect', () => {
+          warn(
+            `Socket ${socket.id} disconnected from ${socket.handshake.address}`,
+          );
+          this.removePlayer(socket.id);
+        });
     });
   }
 
@@ -104,11 +118,54 @@ export class Game {
     }
   }
 
-  setPlayerName(id: string, name: string) {
+  playerJoined(id: string, name: string) {
     const player = this.players.find(player => player.socket.id === id);
     if (player) {
-      info(`Set player name ${player.socket.id}: "${name}"`);
-      player.name = name;
+      info(`Player joined ${player.socket.id}: "${name}"`);
+      player.info.name = name;
+      this.updateClientsGameState();
+      this.io.emit('server.player.joined', player.info);
+    }
+  }
+
+  playerDamaged(id: string, health: number) {
+    const player = this.players.find(player => player.socket.id === id);
+    if (player) {
+      info(`Player ${player.info.name} damaged: ${health}`);
+      player.info.health = health;
+      this.updateClientsGameState();
+    }
+  }
+
+  playerScore(id: string, score: number, totalCells: number) {
+    const player = this.players.find(player => player.socket.id === id);
+    if (player) {
+      info(
+        `Player ${player.info.name} score: ${score} totalCells: ${totalCells}`,
+      );
+      player.info.score = score;
+      if (totalCells <= 0) {
+        info(`Player ${player.info.name} wins!`);
+        this.status = 'over';
+        this.io.emit('server.player.wins', player.info);
+      }
+      this.updateClientsGameState();
+    }
+  }
+
+  playerDead(id: string) {
+    const player = this.players.find(player => player.socket.id === id);
+    if (player) {
+      info(`Player ${player.info.name} dead!`);
+      player.info.isAlive = false;
+      const alivePlayers = this.players.filter(
+        player => player.info.isAlive,
+      ).length;
+      if (alivePlayers === 0) {
+        info(`All players dead game over!`);
+        this.status = 'over';
+      }
+      this.io.emit('server.player.dead', player.info);
       this.updateClientsGameState();
     }
   }
@@ -140,19 +197,12 @@ export class Game {
       case 'waiting':
         return {
           ...gameState,
-          players: this.players.map(player => ({
-            name: player.name,
-            id: player.socket.id,
-            ip: player.socket.request.socket.remoteAddress || '?',
-          })),
+          players: this.players.map(player => player.info),
         };
       case 'active':
         return {
           ...gameState,
-          players: this.players.map(player => ({
-            name: player.name!,
-            id: player.socket.id,
-          })),
+          players: this.players.map(player => player.info),
         };
       default:
         return gameState;

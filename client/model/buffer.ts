@@ -1,4 +1,4 @@
-import { Color, Point, Rect } from './util';
+import { Color, Point, px, Rect } from "./util";
 
 export class Buffer {
   width: number;
@@ -10,10 +10,10 @@ export class Buffer {
   constructor(width: number, height: number) {
     this.width = width;
     this.height = height;
-    const canvas = (this.canvas = document.createElement('canvas'));
+    const canvas = (this.canvas = document.createElement("canvas"));
     canvas.width = width;
     canvas.height = height;
-    const ctx = (this.ctx = canvas.getContext('2d')!);
+    const ctx = (this.ctx = canvas.getContext("2d")!);
     ctx.translate(0.5, 0.5);
     this.imageData = ctx.getImageData(0, 0, width, height);
   }
@@ -21,6 +21,8 @@ export class Buffer {
   setSize(width: number, height: number) {
     this.width = this.canvas.width = width;
     this.height = this.canvas.height = height;
+    this.canvas.style.width = px(width);
+    this.canvas.style.height = px(height);
     this.getImageData();
   }
 
@@ -96,7 +98,7 @@ export class Buffer {
   drawPoint(
     x: number,
     y: number,
-    color: string = 'yellow',
+    color: string = "yellow",
     radius: number = 6
   ) {
     const { ctx } = this;

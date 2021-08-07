@@ -1,8 +1,14 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Game } from "./game";
+import { Game } from "./model/game";
 import { getIsAdmin } from "./model/util";
-import { GameStatus, ConnectingPlayer, isWaitingGameState } from "../common";
+import {
+  GameStatus,
+  isWaitingGameState,
+  isActiveGameState,
+  PlayerInfo,
+} from "../common";
+import { Score } from "./score";
 
 const game = Game.instance;
 
@@ -21,11 +27,13 @@ function getStatusText(status: GameStatus) {
   }
 }
 
-function getPlayerInfoName(player: ConnectingPlayer) {
+function getPlayerInfoName(player: PlayerInfo) {
   if (player.name) {
     return (
       <span>
-        <div className="playerStatusDot active"></div>
+        <div
+          className={`playerStatusDot ${player.isAlive ? "alive" : "dead"}`}
+        ></div>
         {player.name}
       </span>
     );
@@ -38,7 +46,7 @@ function getPlayerInfoName(player: ConnectingPlayer) {
   );
 }
 
-function getJoinedPlayers(playerInfo: ConnectingPlayer[]) {
+function getJoinedPlayers(playerInfo: PlayerInfo[]) {
   return playerInfo.filter((player) => !!player.name);
 }
 
@@ -63,7 +71,7 @@ const ping = () => {
 
 export function Info() {
   const [gameState, setGameState] = useState(game.state);
-  const [playerInfo, setPlayerInfo] = useState([] as ConnectingPlayer[]);
+  const [playerInfo, setPlayerInfo] = useState([] as PlayerInfo[]);
   const [latency, setLatency] = useState(0);
 
   const joinedPlayerCount = getJoinedPlayers(playerInfo).length;
@@ -73,33 +81,39 @@ export function Info() {
   };
 
   useEffect(() => {
-    game.on("game.state.changed", (gameState) => {
-      setGameState(gameState);
-      if (isWaitingGameState(gameState)) {
-        setPlayerInfo(gameState.players);
-      }
-    });
-    game.on("pong", () => {
-      const currentLatency = Math.round((Date.now() - pingTime) / 2);
-      setLatency(currentLatency);
-      if (measureLatency) {
-        ping();
-      }
-    });
+    game
+      .on("game.state.changed", (gameState) => {
+        setGameState(gameState);
+        if ("players" in gameState) {
+          setPlayerInfo(gameState.players);
+        }
+      })
+      .on("pong", () => {
+        const currentLatency = Math.round(Date.now() - pingTime);
+        setLatency(currentLatency);
+        if (measureLatency) {
+          ping();
+        }
+      });
     ping();
   }, []);
 
   const players = playerInfo.map((player, i) => {
     const isPlayerJoined = !!player.name;
+
     if (!isPlayerJoined && !isAdmin) {
       return null;
     }
+
     return (
       <tr
         key={`info-player-${i}`}
         className={game.socket.id === player.id ? "current" : ""}
       >
-        <td>{getPlayerInfoName(player)}</td>
+        <td>
+          {getPlayerInfoName(player)}
+          {isActiveGameState(gameState) ? <Score player={player} /> : null}
+        </td>
         {isAdmin && player.id !== game.socket.id ? (
           <td>
             <button

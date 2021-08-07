@@ -1,11 +1,11 @@
-import { Graphics } from './graphics';
-import { Buffer } from './buffer';
-import { Color, createElement, px, Rect } from './util';
-import { CutLine } from './cutLine';
+import { Graphics } from "./graphics";
+import { Buffer } from "./buffer";
+import { Color, createElement, px, Rect } from "./util";
+import { CutLine } from "./cutLine";
 
 export enum Buffers {
-  Grid = 'grid',
-  Cuts = 'cuts',
+  Grid = "grid",
+  Cuts = "cuts",
 }
 
 export type Direction = -1 | 1;
@@ -29,6 +29,7 @@ export class Grid {
   vertexMap: Map<string, Vertex> = new Map();
   edgeMap: Map<string, Edge> = new Map();
   spritesContainer: HTMLDivElement;
+  totalCells: number = 0;
 
   constructor(
     hDivisions: number,
@@ -45,6 +46,13 @@ export class Grid {
 
   get minCellSize() {
     return Math.min(this.cellWidth, this.cellHeight);
+  }
+
+  reset() {
+    this.cells = [];
+    this.graphics.getBuffer(Buffers.Grid).clear();
+    this.graphics.getBuffer(Buffers.Cuts).clear();
+    this.init(this.width, this.height);
   }
 
   init(width: number, height: number) {
@@ -116,6 +124,7 @@ export class Grid {
     }
 
     // create cells
+    this.totalCells = 0;
     for (let v = 0; v < vDivisions; v += 1) {
       const row: Cell[] = [];
       for (let h = 0; h < hDivisions; h += 1) {
@@ -136,6 +145,8 @@ export class Grid {
         const bottomEdge = edgeMap.get(bottomEdgeKey)!;
         const cell = new Cell(topEdge, leftEdge, rightEdge, bottomEdge);
         row.push(cell);
+
+        this.totalCells++;
 
         if (h > 0) {
           // link horizontal edges prev/next
@@ -199,7 +210,7 @@ export class Grid {
 
   renderGrid() {
     const buffer = this.graphics.getBuffer(Buffers.Grid);
-    buffer.fill('green');
+    buffer.fill("green");
     buffer.batchImageDataOps(() => {
       const { hDivisions, vDivisions } = this;
       for (let v = 0; v < vDivisions; v += 1) {
@@ -523,9 +534,9 @@ export class Cell {
   cut() {
     this.isEmpty = true;
     const sprite = (this.sprite = createElement<HTMLDivElement>(
-      'div',
+      "div",
       undefined,
-      ['sprite', 'cell']
+      ["sprite", "cell"]
     ));
     const [x, y, w, h] = this.bounds;
     const grid = this.left.grid;
@@ -534,12 +545,12 @@ export class Cell {
     sprite.style.width = px(w);
     sprite.style.height = px(h);
     grid.spritesContainer.appendChild(this.sprite);
-    grid.graphics.getBuffer(Buffers.Grid).fillRect(x, y, w, h, 'black');
+    grid.graphics.getBuffer(Buffers.Grid).fillRect(x, y, w, h, "black");
     setTimeout(() => {
       sprite.style.left = px(x + w / 2);
       sprite.style.top = px(y + h / 2);
-      sprite.style.width = '0px';
-      sprite.style.height = '0px';
+      sprite.style.width = "0px";
+      sprite.style.height = "0px";
       setTimeout(() => {
         sprite.parentElement!.removeChild(sprite);
       }, 2000);

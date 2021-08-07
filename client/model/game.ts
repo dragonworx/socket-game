@@ -1,12 +1,18 @@
 import io, { Socket } from "socket.io-client";
 import { EventEmitter } from "eventemitter3";
 import { InputManager } from "../inputManager";
+import { RemoteInputChannel, StandardInputMap } from "../inputChannel";
 import { Animator } from "./animator";
 import { Player } from "./player";
 import { createElement } from "./util";
 import { Graphics } from "./graphics";
 import { Grid, Direction, Buffers as GridBuffer } from "./grid";
-import { GameState, isWaitingGameState, isActiveGameState } from "../../common";
+import {
+  GameState,
+  isWaitingGameState,
+  isActiveGameState,
+  PlayerInfo,
+} from "../../common";
 
 export const GridSize = 10;
 
@@ -15,7 +21,7 @@ export class Game extends EventEmitter {
 
   socket: Socket;
   state: GameState;
-  playerName?: string;
+  userPlayer?: Player;
   players: Player[] = [];
   inputManager: InputManager;
   animator: Animator;
@@ -44,37 +50,58 @@ export class Game extends EventEmitter {
     this.graphics = new Graphics();
     this.grid = new Grid(GridSize, GridSize, this.spritesContainer);
     this.initSocketHandlers();
+    this.socket.emit("client.game.state");
   }
 
   initSocketHandlers() {
-    this.socket.on("server.game.state", (gameState: GameState) => {
-      this.state = gameState;
+    this.socket
+      .on("server.game.state", (gameState: GameState) => {
+        console.log("server.game.state", gameState);
+        this.state = gameState;
 
-      if (isWaitingGameState(gameState)) {
-        if (!gameState.players.find((player) => player.id === this.socket.id)) {
-          window.location.reload();
+        if (isWaitingGameState(gameState)) {
+          if (
+            !gameState.players.find((player) => player.id === this.socket.id)
+          ) {
+            window.location.reload();
+          }
         }
-      }
 
-      this.emit("game.state.changed", gameState);
-    });
-
-    this.socket.on("server.pong", () => {
-      this.emit("pong");
-    });
-
-    this.socket.on("disconnect", () => {
-      this.state = {
-        status: "unconnected",
-      };
-      this.emit("game.state.changed", this.state);
-    });
-  }
-
-  newKeyboardPlayer(mapping: Map<string, string>) {
-    const inputChannel = this.inputManager.createKeyboardChannel(mapping);
-    const player = new Player(inputChannel);
-    this.players.push(player);
+        this.emit("game.state.changed", gameState);
+      })
+      .on("server.player.joined", (playerInfo: PlayerInfo) => {
+        const { spritesContainer } = this;
+        this.emit("game.player.joined", playerInfo);
+        if (playerInfo.id === this.socket.id && this.userPlayer) {
+          console.log("Added user player sprite", this.userPlayer.info.name);
+          spritesContainer.appendChild(this.userPlayer.sprite);
+          this.userPlayer.info.id = playerInfo.id;
+        } else {
+          const player = this.newRemotePlayer(playerInfo);
+          player.setName(playerInfo.name!);
+          player.info.id = playerInfo.id;
+          spritesContainer.appendChild(player.sprite);
+          console.log("added sprite for player " + player.info.name);
+        }
+        this.refreshPlayerInitialLayout();
+      })
+      .on("server.player.dead", (playerInfo: PlayerInfo) => {
+        const player = this.findPlayer(playerInfo.id);
+        player.setIsDead();
+      })
+      .on("server.player.wins", (playerInfo: PlayerInfo) => {
+        const player = this.findPlayer(playerInfo.id);
+        alert(`Player ${player.info.name} wins!`);
+      })
+      .on("server.pong", () => {
+        this.emit("pong");
+      })
+      .on("disconnect", () => {
+        this.state = {
+          status: "unconnected",
+        };
+        this.emit("game.state.changed", this.state);
+      });
   }
 
   init(gameView: HTMLDivElement) {
@@ -85,9 +112,15 @@ export class Game extends EventEmitter {
     this.grid.graphics.addBuffersToContainer(gameView);
     this.graphics.addBuffersToContainer(gameView);
     gameView.appendChild(spritesContainer);
-    this.reset();
     this.animator.start();
-    this.socket.emit("client.game.state");
+  }
+
+  start() {
+    this.socket.emit("client.game.start");
+  }
+
+  end() {
+    this.socket.emit("client.game.end");
   }
 
   setSpritesContainer(element: HTMLDivElement) {
@@ -95,8 +128,22 @@ export class Game extends EventEmitter {
   }
 
   reset() {
+    this.socket.emit("client.game.reset");
+    this.grid.reset();
+    this.players.forEach((player) => {
+      player.info.score = 0;
+      player.info.health = 100;
+      player.info.isAlive = true;
+    });
+    this.refreshPlayerInitialLayout();
+  }
+
+  findPlayer(id: string) {
+    return this.players.find((player) => player.info.id === id)!;
+  }
+
+  refreshPlayerInitialLayout() {
     this.distributePlayerInitialPositions();
-    this.addPlayerElementsToSprites();
     this.setPlayersInitialPositions();
   }
 
@@ -132,15 +179,6 @@ export class Game extends EventEmitter {
     player.setEdge(edge, direction);
   }
 
-  addPlayerElementsToSprites() {
-    const { spritesContainer } = this;
-    if (spritesContainer) {
-      this.players.forEach((player) =>
-        spritesContainer.appendChild(player.sprite)
-      );
-    }
-  }
-
   setPlayersInitialPositions() {
     this.players.forEach((player) => {
       player.setSpriteToCurrentPosition();
@@ -157,18 +195,55 @@ export class Game extends EventEmitter {
     }
   };
 
-  onFrame = (currentFps: number, elapsedTime: number) => {
+  onFrame = () => {
     this.step();
   };
 
   step() {
-    this.players.forEach((player) => {
-      player.move();
-      player.setSpriteToCurrentPosition();
-    });
-    const cutsBuffer = this.grid.graphics.getBuffer(GridBuffer.Cuts);
-    cutsBuffer.batchImageDataOps(() => {
-      this.players.forEach((player) => player.renderCurrentPosition());
-    });
+    if (isActiveGameState(this.state)) {
+      this.players.forEach((player) => {
+        if (player.info.isAlive) {
+          player.move();
+          player.setSpriteToCurrentPosition();
+        }
+      });
+      const cutsBuffer = this.grid.graphics.getBuffer(GridBuffer.Cuts);
+      cutsBuffer.batchImageDataOps(() => {
+        this.players.forEach(
+          (player) => player.info.isAlive && player.renderCurrentPosition()
+        );
+      });
+    }
+  }
+
+  removePlayer(id: string) {
+    if (id === this.socket.id) {
+      return window.location.reload();
+    }
+    this.socket.emit("client.player.remove", id);
+  }
+
+  join(name: string) {
+    this.socket.emit("client.player.join", name);
+    const player = (this.userPlayer = this.newKeyboardPlayer(StandardInputMap));
+    player.setName(name);
+  }
+
+  newKeyboardPlayer(mapping: Map<string, string>) {
+    const inputChannel = this.inputManager.createKeyboardChannel(mapping);
+    const player = new Player(inputChannel);
+    this.players.push(player);
+    return player;
+  }
+
+  newRemotePlayer(playerInfo: PlayerInfo) {
+    const inputChannel = new RemoteInputChannel(
+      StandardInputMap,
+      this.socket,
+      playerInfo
+    );
+    const player = new Player(inputChannel);
+    this.players.push(player);
+    return player;
   }
 }

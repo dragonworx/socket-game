@@ -1,6 +1,17 @@
-import { EventEmitter } from 'eventemitter3';
+import { EventEmitter } from "eventemitter3";
+import { Socket } from "socket.io-client";
+import { PlayerInfo, RemoteInput } from "../common";
 
 export type InputChannelType = string;
+
+export const StandardInputMap = new Map(
+  Object.entries({
+    ArrowLeft: "left",
+    ArrowRight: "right",
+    ArrowUp: "up",
+    ArrowDown: "down",
+  })
+);
 
 export class InputChannel<T> extends EventEmitter {
   mapping: Map<T, string>;
@@ -87,14 +98,14 @@ export class KeyboardInputChannel extends InputChannel<string> {
     const input = this.mapping.get(code) || code;
     this.activateInput(input);
     this.push(input);
-    this.emit('keydown', input);
+    this.emit("keydown", input);
   }
 
   onKeyUp(e: KeyboardEvent) {
     const { code } = e;
     const input = this.mapping.get(code) || code;
     this.deactivateInput(input);
-    this.emit('keyup', input);
+    this.emit("keyup", input);
   }
 
   isKeyPressed(code: string) {
@@ -102,6 +113,45 @@ export class KeyboardInputChannel extends InputChannel<string> {
   }
 
   update() {
-    this.activeInput.forEach((_startTime, code) => this.emit('keypress', code));
+    this.activeInput.forEach((_startTime, code) => this.emit("keypress", code));
+  }
+}
+
+export class RemoteInputChannel extends InputChannel<string> {
+  playerInfo: PlayerInfo;
+  socket: Socket;
+
+  constructor(
+    mapping: Map<string, string>,
+    socket: Socket,
+    playerInfo: PlayerInfo
+  ) {
+    super(mapping);
+    this.socket = socket;
+    this.playerInfo = playerInfo;
+    socket
+      .on("server.input.keydown", (input: RemoteInput) => {
+        if (input.id === playerInfo.id) {
+          this.onKeyDown(input.code);
+        }
+      })
+      .on("server.input.keyup", (input: RemoteInput) => {
+        if (input.id === playerInfo.id) {
+          this.onKeyUp(input.code);
+        }
+      });
+  }
+
+  onKeyDown(keyCode: string) {
+    console.log("remote keydown", keyCode);
+    const input = this.mapping.get(keyCode) || keyCode;
+    this.activateInput(input);
+    this.push(input);
+  }
+
+  onKeyUp(keyCode: string) {
+    console.log("remote keyup", keyCode);
+    const input = this.mapping.get(keyCode) || keyCode;
+    this.deactivateInput(input);
   }
 }
